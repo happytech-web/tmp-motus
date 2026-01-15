@@ -7,6 +7,11 @@ echo "Starting Motus evaluation on RoboTwin at $(date)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 POLICY_DIR="$SCRIPT_DIR"
 
+# Early logs for verification
+echo "[MOTUS-AUTO] Script path: ${BASH_SOURCE[0]}"
+echo "[MOTUS-AUTO] Script dir:  ${SCRIPT_DIR}"
+echo "[MOTUS-AUTO] Pre-export DISABLE_FLASH_ATTN=${DISABLE_FLASH_ATTN:-<unset>}"
+
 # ============================================================================
 # Load Configuration from paths_config.yml
 # ============================================================================
@@ -113,6 +118,19 @@ fi
 # Set environment
 export PYTHONPATH="${ROBOTWIN_ROOT}:${PYTHONPATH}"
 export OMP_NUM_THREADS=8
+export DISABLE_FLASH_ATTN=1  # Force fallback attention instead of flash-attn
+echo "[MOTUS-AUTO] Exported DISABLE_FLASH_ATTN=${DISABLE_FLASH_ATTN}"
+
+# Verify from Python: env and which attention module is used
+python - <<'PY'
+import os, importlib
+print(f"[MOTUS-AUTO] Python sees DISABLE_FLASH_ATTN={os.getenv('DISABLE_FLASH_ATTN')}")
+try:
+    m = importlib.import_module('wan.modules.attention')
+    print(f"[MOTUS-AUTO] wan.modules.attention: {getattr(m, '__file__', 'unknown')}")
+except Exception as e:
+    print(f"[MOTUS-AUTO] Import wan.modules.attention failed: {e}")
+PY
 
 # Create logs directory
 LOG_DIR="${POLICY_DIR}/logs_$(date +%Y%m%d_%H%M%S)"
