@@ -113,6 +113,7 @@ fi
 export PYTHONPATH="${ROBOTWIN_ROOT}:${PYTHONPATH}"
 export OMP_NUM_THREADS=8
 export CUDA_VISIBLE_DEVICES=$GPU_ID
+export DISABLE_FLASH_ATTN=1  # Force fallback attention instead of flash-attn
 
 # Create logs directory
 LOG_DIR="${POLICY_DIR}/logs_single_$(date +%Y%m%d_%H%M%S)"

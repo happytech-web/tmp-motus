@@ -1,5 +1,6 @@
 # Copyright 2024-2025 The Alibaba Wan Team Authors. All rights reserved.
 import torch
+import os
 
 try:
     import flash_attn_interface
@@ -55,6 +56,27 @@ def flash_attention(
 
     # params
     b, lq, lk, out_dtype = q.size(0), q.size(1), k.size(1), q.dtype
+
+    # Allow disabling flash-attn via environment variable
+    # Set DISABLE_FLASH_ATTN=1 in the environment to force PyTorch SDPA fallback
+    disable_flash = os.getenv('DISABLE_FLASH_ATTN', '').lower() in ('1', 'true', 'yes', 'on')
+
+    if disable_flash:
+        # Fallback to PyTorch scaled_dot_product_attention
+        # Note: variable-length packing (q_lens/k_lens) is ignored in this path.
+        import warnings as _warnings
+        if q_lens is not None or k_lens is not None:
+            _warnings.warn(
+                'DISABLE_FLASH_ATTN set: ignoring q_lens/k_lens; using SDPA without padding mask.'
+            )
+        q_t = q.transpose(1, 2).to(dtype)
+        k_t = k.transpose(1, 2).to(dtype)
+        v_t = v.transpose(1, 2).to(dtype)
+        out = torch.nn.functional.scaled_dot_product_attention(
+            q_t, k_t, v_t, attn_mask=None, is_causal=causal, dropout_p=dropout_p
+        )
+        out = out.transpose(1, 2).contiguous()
+        return out.type(out_dtype)
 
     def half(x):
         return x if x.dtype in half_dtypes else x.to(dtype)

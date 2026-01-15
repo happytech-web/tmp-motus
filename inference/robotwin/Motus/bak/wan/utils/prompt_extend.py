@@ -14,11 +14,14 @@ import dashscope
 import torch
 from PIL import Image
 
+DISABLE_FLASH = os.getenv('DISABLE_FLASH_ATTN', '').lower() in ('1', 'true', 'yes', 'on')
 try:
+    if DISABLE_FLASH:
+        raise ModuleNotFoundError
     from flash_attn import flash_attn_varlen_func
     FLASH_VER = 2
 except ModuleNotFoundError:
-    flash_attn_varlen_func = None  # in compatible with CPU machines
+    flash_attn_varlen_func = None  # compatible with CPU or disabled flash-attn
     FLASH_VER = None
 
 from .system_prompt import *
