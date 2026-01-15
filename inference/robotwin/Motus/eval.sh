@@ -16,6 +16,11 @@ echo "Starting single task evaluation at $(date)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 POLICY_DIR="$SCRIPT_DIR"
 
+# Early log for verification
+echo "[MOTUS-EVAL] Script path: ${BASH_SOURCE[0]}"
+echo "[MOTUS-EVAL] Script dir:  ${SCRIPT_DIR}"
+echo "[MOTUS-EVAL] Pre-export DISABLE_FLASH_ATTN=${DISABLE_FLASH_ATTN:-<unset>}"
+
 # ============================================================================
 # Load Configuration from paths_config.yml
 # ============================================================================
@@ -114,6 +119,18 @@ export PYTHONPATH="${ROBOTWIN_ROOT}:${PYTHONPATH}"
 export OMP_NUM_THREADS=8
 export CUDA_VISIBLE_DEVICES=$GPU_ID
 export DISABLE_FLASH_ATTN=1  # Force fallback attention instead of flash-attn
+echo "[MOTUS-EVAL] Exported DISABLE_FLASH_ATTN=${DISABLE_FLASH_ATTN}"
+
+# Verify from Python: env and which attention module is used
+python - <<'PY'
+import os, importlib
+print(f"[MOTUS-EVAL] Python sees DISABLE_FLASH_ATTN={os.getenv('DISABLE_FLASH_ATTN')}")
+try:
+    m = importlib.import_module('wan.modules.attention')
+    print(f"[MOTUS-EVAL] wan.modules.attention: {getattr(m, '__file__', 'unknown')}")
+except Exception as e:
+    print(f"[MOTUS-EVAL] Import wan.modules.attention failed: {e}")
+PY
 
 # Create logs directory
 LOG_DIR="${POLICY_DIR}/logs_single_$(date +%Y%m%d_%H%M%S)"
